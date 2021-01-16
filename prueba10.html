@@ -1,8 +1,7 @@
 <html>
     <head>
      
-        <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
-        <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
+        
   
 <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1c2407b26c61958baa93967b5412487cd94b290b/dist/aframe-master.min.js"></script>
 <!--- <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script> --->
@@ -37,16 +36,10 @@
     <div>Loading, please wait...</div>
   </div>
   <a-scene
-    vr-mode-ui="enabled: false;"
+  vr-mode-ui="enabled: false;"
     renderer="logarithmicDepthBuffer: true;"
     embedded
-    arjs="trackingMethod: best; sourceType: webcam;debugUIEnabled: false;"
-      
-            loading-screen="enabled: false;"
-          
-            id="scene"
-        
-            gesture-detector     
+    arjs="trackingMethod: best; sourceType: webcam;debugUIEnabled: false;"    
            
   >
     <!-- we use cors proxy to avoid cross-origin problems -->
@@ -62,14 +55,12 @@
       <!-- light="type: point; color: white; intensity: 2" -->
       <!-- material="color: white; shader: flat; src: instalacion2.png" -->
       
-   <a-image
+ <a-image
                     src="instalacion2.png"
-                   width="6" height="9"
+                   width="180" height="320"
                     position="50 150 -100"
-       scale="2 2 2"
-      class="clickable"
-                    rotation="-90 0 0"
-                    gesture-handler
+       scale="1 1 1"
+       rotation="-90 0 0"
                     
                 ></a-image>
   
