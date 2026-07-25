@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Gaussian Splat Viewer</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0d0d0d;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ffffff;
+            background: rgba(15, 15, 15, 0.85);
+            padding: 20px;
+            border-radius: 12px;
+            z-index: 10;
+            max-width: 300px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #ui-overlay h1 {
+            font-size: 16px;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+        }
+
+        #ui-overlay p {
+            font-size: 12px;
+            margin: 6px 0;
+            color: #b0b0b0;
+            line-height: 1.4;
+        }
+
+        .controls-list {
+            margin: 12px 0;
+            padding-left: 18px;
+            font-size: 11px;
+            color: #d0d0d0;
+        }
+
+        .controls-list li {
+            margin-bottom: 4px;
+        }
+
+        .file-upload-btn {
+            display: block;
+            background: #2563eb;
+            color: white;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background 0.2s;
+            margin-top: 15px;
+        }
+
+        .file-upload-btn:hover {
+            background: #1d4ed8;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        #loading-indicator {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            display: none;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+    </style>
+
+    <!-- Import Map to handle ESM dependencies without a bundler -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "gaussian-splats-3d": "https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js"
+      }
+    }
+    </script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-overlay">
+        <h1>Gaussian Splat Viewer</h1>
+        <p>An interactive, WebGL-based viewer using Three.js and GaussianSplats3D.</p>
+        
+        <ul class="controls-list">
+            <li><strong>Left Click + Drag:</strong> Rotate Orbit</li>
+            <li><strong>Right Click + Drag:</strong> Pan</li>
+            <li><strong>Scroll / Pinch:</strong> Zoom</li>
+        </ul>
+
+        <label for="file-input" class="file-upload-btn">
+            Choose .ply or .splat file
+        </label>
+        <input type="file" id="file-input" accept=".ply,.splat,.ksplat" />
+    </div>
+
+    <div id="loading-indicator">Loading Splat... <span id="progress-percent">0%</span></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import * as GaussianSplats3D from 'gaussian-splats-3d';
+
+        const container = document.getElementById('canvas-container');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const progressPercent = document.getElementById('progress-percent');
+        const fileInput = document.getElementById('file-input');
+
+        let viewer = null;
+
+        // Initialize the Viewer instance
+        function initViewer() {
+            viewer = new GaussianSplats3D.Viewer({
+                'rootElement': container,
+                'cameraUp': [0, -1, -0.6],
+                'initialCameraPosition': [-1, -4, 6],
+                'initialCameraLookAt': [0, 4, 0],
+                
+                // Disabling shared memory is recommended if you're loading this 
+                // locally or on standard hosting platforms. It prevents the browser 
+                // from demanding strict COOP and COEP cross-origin headers.
+                'sharedMemoryForWorkers': false
+            });
+        }
+
+        // Load splat data into the active viewer
+        function loadScene(fileSource) {
+            loadingIndicator.style.display = 'block';
+            progressPercent.innerText = '0%';
+
+            viewer.addSplatScene(fileSource, {
+                'onProgress': (percent, percentStr) => {
+                    progressPercent.innerText = percentStr;
+                }
+            })
+            .then(() => {
+                loadingIndicator.style.display = 'none';
+                viewer.start();
+            })
+            .catch((error) => {
+                console.error("Failed to load splat scene:", error);
+                loadingIndicator.innerText = "Error loading file.";
+                setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
+                    loadingIndicator.innerText = "Loading Splat... 0%";
+                }, 3000);
+            });
+        }
+
+        // Handle file uploads
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Generate an object URL representing the uploaded file
+            const localURL = URL.createObjectURL(file);
+
+            // Clean up the previous viewer instance to free memory before loading a new model
+            if (viewer) {
+                loadingIndicator.style.display = 'block';
+                loadingIndicator.innerText = "Cleaning up old scene...";
+                try {
+                    await viewer.dispose();
+                } catch (e) {
+                    console.warn("Disposal notice:", e);
+                }
+                container.innerHTML = ''; 
+            }
+
+            // Re-initialize and load the file
+            initViewer();
+            loadScene(localURL);
+        });
+
+        // Run the initialization on load
+        initViewer();
+    </script>
+</body>
+</html>
